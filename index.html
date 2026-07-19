@@ -1,0 +1,312 @@
+/**
+ * @file index.html
+ * @brief Smart-Art LED Choreography Studio
+ * Web application to batch configure and generate led_X.txt files.
+ * Ready to be hosted on Vercel/GitHub Pages.
+ */
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart-Art LED Studio</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px; 
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            height: 100vh;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        h1, h2 { margin-top: 0; color: var(--text); font-size: 1.2rem; margin-bottom: 15px;}
+        
+        .form-group { margin-bottom: 15px; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .form-row > div { flex: 1; }
+
+        label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;}
+        
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        input:focus, select:focus { border-color: var(--primary); }
+
+        .color-palette { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;}
+        .swatch {
+            width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: transform 0.2s;
+        }
+        .swatch:hover { transform: scale(1.1); border-color: white; }
+
+        button {
+            width: 100%; padding: 12px; background: var(--primary); color: white;
+            border: none; border-radius: 6px; font-weight: 600; cursor: pointer;
+            transition: 0.2s; margin-top: 10px;
+        }
+        button:hover { background: var(--primary-hover); }
+        button.success { background: var(--success); margin-top: auto; }
+        button.success:hover { background: #059669; }
+
+        .preview-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            align-content: start;
+        }
+
+        .led-indicator {
+            aspect-ratio: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 2px #000;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        
+        .led-indicator.off { opacity: 0.3; }
+        
+        hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+    <!-- CONTROL PANEL -->
+    <div class="panel">
+        <h1>Batch Configuration</h1>
+        
+        <div class="form-row">
+            <div>
+                <label>Start LED (0-299)</label>
+                <input type="number" id="start-led" min="0" max="299" value="0">
+            </div>
+            <div>
+                <label>End LED (0-299)</label>
+                <input type="number" id="end-led" min="0" max="299" value="299">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>State</label>
+            <select id="state">
+                <option value="on">ON (Active)</option>
+                <option value="off">OFF (Inactive)</option>
+            </select>
+        </div>
+
+        <hr>
+
+        <label>Color Palette</label>
+        <div class="color-palette">
+            <div class="swatch" style="background: #ff0000" onclick="setColor(255, 0, 0)"></div>
+            <div class="swatch" style="background: #00ff00" onclick="setColor(0, 255, 0)"></div>
+            <div class="swatch" style="background: #0000ff" onclick="setColor(0, 0, 255)"></div>
+            <div class="swatch" style="background: #ffff00" onclick="setColor(255, 255, 0)"></div>
+            <div class="swatch" style="background: #ff00ff" onclick="setColor(255, 0, 255)"></div>
+            <div class="swatch" style="background: #00ffff" onclick="setColor(0, 255, 255)"></div>
+            <div class="swatch" style="background: #ffffff" onclick="setColor(255, 255, 255)"></div>
+            <input type="color" id="color-picker" style="width: 30px; height: 30px; padding: 0; border: none; cursor: pointer;">
+        </div>
+
+        <div class="form-row">
+            <div><label>R</label><input type="number" id="r" min="0" max="255" value="255"></div>
+            <div><label>G</label><input type="number" id="g" min="0" max="255" value="0"></div>
+            <div><label>B</label><input type="number" id="b" min="0" max="255" value="100"></div>
+        </div>
+
+        <hr>
+
+        <div class="form-row">
+            <div><label>Time ON (s)</label><input type="number" id="t-on" step="0.1" value="0.0"></div>
+            <div><label>Time OFF (s)</label><input type="number" id="t-off" step="0.1" value="0.0"></div>
+        </div>
+
+        <div class="form-row">
+            <div><label>Start Sec</label><input type="number" id="start-sec" step="0.1" value="0.0"></div>
+            <div><label>Stop Sec (0=End)</label><input type="number" id="stop-sec" step="0.1" value="0.0"></div>
+        </div>
+
+        <div class="form-row">
+            <div><label>Rep. Interval</label><input type="number" id="rep-int" step="0.1" value="0.0"></div>
+            <div><label>Rep. Count</label><input type="number" id="rep-cnt" value="0"></div>
+            <div><label>Rep. Duration</label><input type="number" id="rep-dur" step="0.1" value="0.0"></div>
+        </div>
+
+        <button onclick="applyConfiguration()">Apply to Range</button>
+        <button class="success" onclick="downloadTxt()">Download led_X.txt</button>
+    </div>
+
+    <!-- VISUALIZER -->
+    <div class="panel">
+        <h2>LED Strip Preview (300 LEDs)</h2>
+        <div class="preview-area" id="preview-area">
+            <!-- LEDs dynamically injected here -->
+        </div>
+    </div>
+
+    <script>
+        /**
+         * @brief Global array holding the state of 300 LEDs
+         */
+        const TOTAL_LEDS = 300;
+        const leds = Array.from({ length: TOTAL_LEDS }, (_, i) => ({
+            id: i, state: 'off', r: 0, g: 0, b: 0,
+            t_on: 0.0, t_off: 0.0, start: 0.0, stop: 0.0,
+            rep_int: 0.0, rep_cnt: 0, rep_dur: 0.0
+        }));
+
+        /**
+         * @brief Event listener for native color picker
+         */
+        document.getElementById('color-picker').addEventListener('input', function(e) {
+            const hex = e.target.value;
+            document.getElementById('r').value = parseInt(hex.substr(1, 2), 16);
+            document.getElementById('g').value = parseInt(hex.substr(3, 2), 16);
+            document.getElementById('b').value = parseInt(hex.substr(5, 2), 16);
+        });
+
+        /**
+         * @brief Updates RGB input fields from quick swatches
+         * @param {number} r - Red value (0-255)
+         * @param {number} g - Green value (0-255)
+         * @param {number} b - Blue value (0-255)
+         */
+        function setColor(r, g, b) {
+            document.getElementById('r').value = r;
+            document.getElementById('g').value = g;
+            document.getElementById('b').value = b;
+            
+            const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            document.getElementById('color-picker').value = hex;
+        }
+
+        /**
+         * @brief Applies form parameters to the selected range of LEDs
+         */
+        function applyConfiguration() {
+            const startIdx = parseInt(document.getElementById('start-led').value);
+            const endIdx = parseInt(document.getElementById('end-led').value);
+            
+            const state = document.getElementById('state').value;
+            const r = parseInt(document.getElementById('r').value);
+            const g = parseInt(document.getElementById('g').value);
+            const b = parseInt(document.getElementById('b').value);
+            const t_on = parseFloat(document.getElementById('t-on').value);
+            const t_off = parseFloat(document.getElementById('t-off').value);
+            const start_sec = parseFloat(document.getElementById('start-sec').value);
+            const stop_sec = parseFloat(document.getElementById('stop-sec').value);
+            const rep_int = parseFloat(document.getElementById('rep-int').value);
+            const rep_cnt = parseInt(document.getElementById('rep-cnt').value);
+            const rep_dur = parseFloat(document.getElementById('rep-dur').value);
+
+            for (let i = startIdx; i <= endIdx; i++) {
+                if (i >= 0 && i < TOTAL_LEDS) {
+                    leds[i] = { id: i, state, r, g, b, t_on, t_off, start: start_sec, stop: stop_sec, rep_int, rep_cnt, rep_dur };
+                }
+            }
+            renderPreview();
+        }
+
+        /**
+         * @brief Renders the LED strip preview in the DOM
+         */
+        function renderPreview() {
+            const container = document.getElementById('preview-area');
+            container.innerHTML = '';
+
+            leds.forEach(led => {
+                const div = document.createElement('div');
+                div.className = `led-indicator ${led.state === 'off' ? 'off' : ''}`;
+                div.innerText = led.id;
+                
+                if (led.state === 'on') {
+                    div.style.backgroundColor = `rgb(${led.r}, ${led.g}, ${led.b})`;
+                    // Calculate contrast for text
+                    const brightness = Math.round(((parseInt(led.r) * 299) + (parseInt(led.g) * 587) + (parseInt(led.b) * 114)) / 1000);
+                    div.style.color = (brightness > 125) ? 'black' : 'white';
+                    div.style.textShadow = 'none';
+                }
+                
+                div.title = `LED ${led.id} | ${led.state.toUpperCase()} | RGB(${led.r},${led.g},${led.b})`;
+                div.onclick = () => {
+                    document.getElementById('start-led').value = led.id;
+                    document.getElementById('end-led').value = led.id;
+                };
+                
+                container.appendChild(div);
+            });
+        }
+
+        /**
+         * @brief Formats the configuration array into a compliant .txt file and triggers download
+         */
+        function downloadTxt() {
+            let fileContent = "";
+            
+            leds.forEach(led => {
+                // Determine parameter count based on repetition settings
+                if (led.rep_cnt > 0) {
+                    fileContent += `led${led.id} = ${led.state}, ${led.r}, ${led.g}, ${led.b}, ${led.t_on.toFixed(1)}, ${led.t_off.toFixed(1)}, ${led.start.toFixed(1)}, ${led.stop.toFixed(1)}, ${led.rep_int.toFixed(1)}, ${led.rep_cnt}, ${led.rep_dur.toFixed(1)}\n`;
+                } else {
+                    fileContent += `led${led.id} = ${led.state}, ${led.r}, ${led.g}, ${led.b}, ${led.t_on.toFixed(1)}, ${led.t_off.toFixed(1)}, ${led.start.toFixed(1)}, ${led.stop.toFixed(1)}\n`;
+                }
+            });
+
+            const blob = new Blob([fileContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'led_X.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Initial render
+        renderPreview();
+    </script>
+</body>
+</html>
